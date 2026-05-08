@@ -8,8 +8,8 @@
 
 #define NODE_ID "ESP32_REAL_1"
 
-#define WIFI_SSID "Nova_1560"
-#define WIFI_PASSWORD "24071974"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
 
 #define MQTT_BROKER "broker.hivemq.com"
 #define MQTT_PORT 1883
