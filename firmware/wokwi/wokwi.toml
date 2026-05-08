@@ -1,0 +1,16 @@
+[wokwi]
+version = 1
+elf = firmware/esp32_node/esp32_node.ino
+
+[[chip]]
+type = "esp32-s3"
+
+# To simulate this node in Wokwi:
+# 1. Open https://wokwi.com
+# 2. Create new ESP32 project
+# 3. Copy esp32_node.ino and config.h contents
+# 4. Change NODE_ID to "WOKWI_1" and NODE_TYPE to "wokwi"
+# 5. Run simulation — it will connect to broker.hivemq.com and publish telemetry
+#
+# The Python backend will automatically receive and integrate Wokwi telemetry
+# into the same graph as real ESP32 nodes and virtual Python nodes.

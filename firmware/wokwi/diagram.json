@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "author": "WSN HIL Project",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-v1",
+      "id": "esp32",
+      "top": 0,
+      "left": 0,
+      "attrs": { "flashSize": "4" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -20,
+      "left": 120,
+      "attrs": { "color": "green", "label": "TX" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 10,
+      "left": 120,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "esp32:D2", "r1:1", "green", [] ],
+    [ "r1:2",    "led1:A", "green", [] ],
+    [ "led1:C",  "esp32:GND.1", "black", [] ]
+  ],
+  "dependencies": {}
+}

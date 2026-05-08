@@ -1,0 +1,25 @@
+# ============================================================
+# WSN Hybrid HIL System — Python Dependencies
+# ============================================================
+
+# Core networking / graph
+networkx>=3.2
+numpy>=1.26
+
+# MQTT communication
+paho-mqtt>=1.6.1
+
+# Dashboard API
+fastapi>=0.110.0
+uvicorn>=0.28.0
+
+# Utilities
+python-dotenv>=1.0
+colorlog>=6.8
+
+# Testing
+pytest>=8.0
+pytest-mock>=3.12
+
+# Optional: for async experiments
+asyncio-mqtt>=0.16
