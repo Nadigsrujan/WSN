@@ -6,37 +6,44 @@ import { Brain, Activity, Target, Zap, Radio, BarChart2 } from 'lucide-react';
 
 // Weight metadata — what each weight means technically
 const WEIGHT_META = {
-  w1: {
-    label: 'Energy (w1)',
-    description: 'Penalises low-battery next-hop nodes. High w1 = battery-aware routing.',
+  alpha: {
+    label: 'Energy (α)',
+    description: 'Penalises low-battery & rapidly draining nodes.',
     color: '#10B981',
-    formula: 'w1 × (1 / Ev)',
+    formula: 'α × W_E',
   },
-  w2: {
-    label: 'Distance (w2)',
-    description: 'Penalises geographically distant hops. High w2 = prefer close neighbours.',
+  beta: {
+    label: 'Link Quality (β)',
+    description: 'Penalises weak links and high interference.',
     color: '#3B82F6',
-    formula: 'w2 × d_uv',
+    formula: 'β × W_L',
   },
-  w3: {
-    label: 'Link Quality (w3)',
-    description: 'Penalises weak RSSI / high ETX links. High w3 = prefer reliable links.',
+  gamma: {
+    label: 'Environment (γ)',
+    description: 'Avoids terrain obstacles and dense foliage.',
     color: '#8B5CF6',
-    formula: 'w3 × (1 / LQ_uv)',
+    formula: 'γ × W_ENV',
   },
-  w4: {
-    label: 'Traffic Load (w4)',
-    description: 'Penalises congested relay nodes. High w4 = avoid busy nodes.',
+  delta: {
+    label: 'Traffic Load (δ)',
+    description: 'Reroutes around congested relay queues.',
     color: '#F59E0B',
-    formula: 'w4 × Lv',
+    formula: 'δ × W_T',
+  },
+  epsilon: {
+    label: 'Path Length (ε)',
+    description: 'Prefers geographically closer and fewer hop paths.',
+    color: '#EC4899',
+    formula: 'ε × W_P',
   },
 };
 
 const ACTION_LABELS = {
   boost_energy:   { label: 'Boost Energy Weight', icon: '⚡', color: '#10B981' },
-  boost_distance: { label: 'Boost Distance Weight', icon: '📍', color: '#3B82F6' },
-  boost_lq:       { label: 'Boost Link Quality', icon: '📶', color: '#8B5CF6' },
-  boost_load:     { label: 'Boost Load Penalty', icon: '🔄', color: '#F59E0B' },
+  boost_lq:       { label: 'Boost Link Quality', icon: '📶', color: '#3B82F6' },
+  boost_env:      { label: 'Boost Environment', icon: '🌲', color: '#8B5CF6' },
+  boost_traffic:  { label: 'Boost Load Penalty', icon: '🔄', color: '#F59E0B' },
+  boost_path:     { label: 'Boost Path Efficiency', icon: '📍', color: '#EC4899' },
   keep:           { label: 'Hold Current Weights', icon: '🔒', color: '#94A3B8' },
   '—':            { label: 'Initialising…', icon: '…', color: '#475569' },
 };
@@ -81,7 +88,7 @@ function RlPanel({ rlState }) {
   const { weights, epsilon, step, recent_rewards, last_action, last_state } = rlState;
 
   // Build data for weight bars
-  const weightData = ['w1', 'w2', 'w3', 'w4'].map(key => ({
+  const weightData = ['alpha', 'beta', 'gamma', 'delta', 'epsilon'].map(key => ({
     key,
     name: WEIGHT_META[key].label,
     value: weights[key] || 0,
@@ -152,18 +159,14 @@ function RlPanel({ rlState }) {
       {/* Cost function display */}
       <div style={{ background: '#1C2230', borderRadius: '8px', padding: '10px 14px' }}>
         <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <BarChart2 size={12} /> ROUTING COST FUNCTION
+          <BarChart2 size={12} /> MULTI-METRIC COST FUNCTION
         </div>
         <div style={{
           fontFamily: 'monospace', fontSize: '12px', color: '#60A5FA',
           background: '#0B0F19', padding: '8px 10px', borderRadius: '4px',
-          letterSpacing: '0.02em'
+          letterSpacing: '0.02em', overflowX: 'auto', whiteSpace: 'nowrap'
         }}>
-          Cost(u,v) ={' '}
-          <span style={{ color: '#10B981' }}>w1</span>/Ev +{' '}
-          <span style={{ color: '#3B82F6' }}>w2</span>·d_uv +{' '}
-          <span style={{ color: '#8B5CF6' }}>w3</span>/LQ +{' '}
-          <span style={{ color: '#F59E0B' }}>w4</span>·Lv
+          C = <span style={{ color: '#10B981' }}>α</span>·W_E + <span style={{ color: '#3B82F6' }}>β</span>·W_L + <span style={{ color: '#8B5CF6' }}>γ</span>·W_ENV + <span style={{ color: '#F59E0B' }}>δ</span>·W_T + <span style={{ color: '#EC4899' }}>ε</span>·W_P
         </div>
       </div>
 

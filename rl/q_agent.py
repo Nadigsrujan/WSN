@@ -35,9 +35,10 @@ log = get_logger("q_agent")
 # ─── Action definitions ───────────────────────────────────────────────────────
 ACTIONS = [
     "boost_energy",
-    "boost_distance",
     "boost_lq",
-    "boost_load",
+    "boost_env",
+    "boost_traffic",
+    "boost_path",
     "keep",
 ]
 
@@ -75,10 +76,11 @@ class QLearningAgent:
 
         # Current routing weights (tuned by this agent)
         self.weights: Dict[str, float] = {
-            "w1": 0.40,   # energy
-            "w2": 0.20,   # distance
-            "w3": 0.25,   # link quality
-            "w4": 0.15,   # load
+            "alpha":   0.25,   # Energy
+            "beta":    0.25,   # Link Quality
+            "gamma":   0.15,   # Environment
+            "delta":   0.15,   # Traffic
+            "epsilon": 0.20,   # Path
         }
 
         # History for dashboard
@@ -137,11 +139,12 @@ class QLearningAgent:
     def _apply_action(self, action: str) -> None:
         """Shift routing weights according to the chosen action."""
         target_map = {
-            "boost_energy":   "w1",
-            "boost_distance": "w2",
-            "boost_lq":       "w3",
-            "boost_load":     "w4",
-            "keep":           None,
+            "boost_energy":  "alpha",
+            "boost_lq":      "beta",
+            "boost_env":     "gamma",
+            "boost_traffic": "delta",
+            "boost_path":    "epsilon",
+            "keep":          None,
         }
         target = target_map.get(action)
 

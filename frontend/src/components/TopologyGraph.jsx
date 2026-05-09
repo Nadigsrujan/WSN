@@ -42,11 +42,32 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
     }
   }
 
-  // Pre-process nodes for force-graph format
+  // Pre-process nodes for force-graph format with FIXED positions to stop wiggling
+  // Enforce vertical hierarchy: SINK (Top) -> CHs (Middle) -> Normal (Bottom)
   const fgData = {
-    nodes: graphData.nodes.map(n => ({ ...n })), // Clone to avoid mutating original
+    nodes: graphData.nodes.map(n => {
+      const isCH = n.is_ch === true;
+      const isSink = n.node_type === 'sink' || n.id === 'SINK';
+      let fy_override = 150; // Bottom layer (Normal)
+      if (isSink) fy_override = -150; // Top layer (Sink)
+      else if (isCH) fy_override = 0; // Middle layer (CH)
+      
+      return { 
+        ...n, 
+        fx: (n.x - 50) * 8, // Maintain geographic X
+        fy: fy_override,    // Force hierarchical Y
+        vz: 0, vx: 0, vy: 0 // Zero velocities to prevent physics jumping
+      };
+    }), 
     links: graphData.edges ? graphData.edges.map(e => ({ ...e })) : []
   };
+
+  // Identify Cluster Heads and Sink to highlight the mesh backbone
+  const chSet = new Set(
+    graphData.nodes
+      .filter(n => n.is_ch || n.node_type === 'sink' || n.id === 'SINK')
+      .map(n => n.id)
+  );
 
   // Draw hexagon helper
   const drawHexagon = (ctx, x, y, size) => {
@@ -61,6 +82,26 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
     ctx.closePath();
   };
 
+  // Draw star helper for Cluster Heads
+  const drawStar = (ctx, x, y, spikes, outerRadius, innerRadius) => {
+    let rot = Math.PI / 2 * 3;
+    let step = Math.PI / spikes;
+    ctx.beginPath();
+    ctx.moveTo(x, y - outerRadius);
+    for (let i = 0; i < spikes; i++) {
+      let hx = x + Math.cos(rot) * outerRadius;
+      let hy = y + Math.sin(rot) * outerRadius;
+      ctx.lineTo(hx, hy);
+      rot += step;
+      hx = x + Math.cos(rot) * innerRadius;
+      hy = y + Math.sin(rot) * innerRadius;
+      ctx.lineTo(hx, hy);
+      rot += step;
+    }
+    ctx.lineTo(x, y - outerRadius);
+    ctx.closePath();
+  };
+
   return (
     <div id="graph-container" style={{ width: '100%', height: '100%', minHeight: '400px', backgroundColor: '#0B0F19' }}>
       <ForceGraph2D
@@ -69,9 +110,12 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
         height={dimensions.height}
         graphData={fgData}
         nodeId="id"
-        // Configure forces
-        d3VelocityDecay={0.1}
-        cooldownTicks={100}
+        // Configure forces for stability
+        d3VelocityDecay={1.0}
+        d3AlphaDecay={1.0}
+        cooldownTicks={0}
+        warmupTicks={0}
+        enableNodeDrag={false}
         onEngineStop={() => {
           if (fgRef.current) {
             fgRef.current.zoomToFit(400, 50);
@@ -85,22 +129,27 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
           const nType = node.node_type || 'virtual';
           const isSink = nType === 'sink' || label === 'SINK';
           const isESP32 = nType === 'real' || label.startsWith('ESP32');
+          const isCH = node.is_ch === true;
+          const clusterId = node.cluster_id !== undefined ? node.cluster_id : 0;
           const isOnPath = currentPath && currentPath.includes(label);
           const isOnAltPath = altPath && altPath.includes(label);
 
           // Node styling
-          const size = isSink ? 14 : isESP32 ? 11 : (isAlive ? Math.max(6, (energy / 100) * 10) : 5);
+          let size = isSink ? 14 : isESP32 ? 11 : (isAlive ? Math.max(6, (energy / 100) * 10) : 5);
+          if (isCH) size += 4; // Make CH larger
           
+          // Generate a color based on cluster_id for alive nodes
+          const clusterColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4'];
           let color = '#475569'; // dead
           if (isAlive) {
-            if (energy > 66) color = '#10B981';
-            else if (energy > 33) color = '#F59E0B';
-            else color = '#EF4444';
+            color = clusterColors[clusterId % clusterColors.length];
+            if (energy < 33) color = '#EF4444'; // Override if dying
           }
           
           let borderColor = '#2A3143';
           if (isSink) borderColor = '#EF4444';
           else if (isESP32) borderColor = '#F59E0B';
+          else if (isCH) borderColor = '#FBBF24'; // Gold border for CH
           else if (nType === 'wokwi') borderColor = '#3B82F6';
           
           if (isOnPath && isAlive) {
@@ -175,28 +224,51 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
               ctx.stroke();
               ctx.setLineDash([]);
             }
+
+            // Glow effect for CH
+            if (isCH) {
+              drawStar(ctx, node.x, node.y, 5, size + 2, (size + 2) / 2);
+              ctx.fillStyle = color;
+              ctx.fill();
+              ctx.lineWidth = isOnPath ? 3 / globalScale : 1.5 / globalScale;
+              ctx.strokeStyle = borderColor;
+              ctx.stroke();
+
+              // Extra glow for CH
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, size + 8, 0, 2 * Math.PI, false);
+              ctx.fillStyle = 'rgba(251, 191, 36, 0.2)'; // Gold glow
+              ctx.fill();
+            }
           }
 
           // Draw label
           const fontSize = 12 / globalScale;
-          ctx.font = `${isESP32 ? 'bold ' : ''}${fontSize}px Inter, sans-serif`;
+          ctx.font = `${isESP32 || isCH ? 'bold ' : ''}${fontSize}px Inter, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = isAlive ? '#E2E8F0' : '#64748B';
-          ctx.fillText(label, node.x, node.y + size + fontSize);
+          const labelText = isCH ? `${label} (CH)` : label;
+          ctx.fillText(labelText, node.x, node.y + size + fontSize);
         }}
         // Edge styling
         linkColor={(edge) => {
-          const key = `${edge.source.id || edge.source}-${edge.target.id || edge.target}`;
+          const sId = edge.source.id || edge.source;
+          const tId = edge.target.id || edge.target;
+          const key = `${sId}-${tId}`;
           if (pathSet.has(key)) return '#3B82F6';
-          if (altPathSet.has(key)) return 'rgba(139, 92, 246, 0.5)';
-          return edge.lqi > 0.6 ? 'rgba(16, 185, 129, 0.25)' : edge.lqi > 0.3 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.15)';
+          if (altPathSet.has(key)) return 'rgba(139, 92, 246, 0.8)';
+          if (chSet.has(sId) && chSet.has(tId)) return '#FBBF24'; // Solid Gold for Mesh Backbone
+          return edge.lqi > 0.6 ? 'rgba(16, 185, 129, 0.2)' : edge.lqi > 0.3 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.1)';
         }}
         linkWidth={(edge) => {
-          const key = `${edge.source.id || edge.source}-${edge.target.id || edge.target}`;
-          if (pathSet.has(key)) return 3;
-          if (altPathSet.has(key)) return 1.5;
-          return 0.8;
+          const sId = edge.source.id || edge.source;
+          const tId = edge.target.id || edge.target;
+          const key = `${sId}-${tId}`;
+          if (pathSet.has(key)) return 6;
+          if (altPathSet.has(key)) return 4;
+          if (chSet.has(sId) && chSet.has(tId)) return 5; // Very Thick backbone
+          return 1.2;
         }}
         linkLineDash={(edge) => {
           const key = `${edge.source.id || edge.source}-${edge.target.id || edge.target}`;

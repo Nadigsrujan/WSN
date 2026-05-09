@@ -30,11 +30,12 @@ from backend.routing import RoutingEngine
 from backend.rl import RLController
 from backend.metrics import MetricsTracker
 from backend.mqtt_client import MQTTIngestor
+from backend.cluster_manager import ClusterManager
+from backend.topology_manager import TopologyManager
+from backend.environment_analyzer import EnvironmentAnalyzer
 from simulation.network_sim import NetworkSimulator
 from simulation.failure_injection import FailureInjector
-from simulation.mesh_topology import (
-    get_adjacency, get_all_positions, get_virtual_node_ids, validate_topology,
-)
+from simulation.mesh_topology import get_all_positions, get_virtual_node_ids
 from backend.utils import get_logger, write_network_state
 
 log = get_logger("main")
@@ -53,21 +54,12 @@ def main() -> None:
     log.info("  RL-Assisted WSN — Hybrid HIL Backend Starting")
     log.info("=" * 60)
 
-    # ── 1. Mesh topology ──────────────────────────────────────────────────────
-    # Get mesh positions and adjacency, with ESP32 slot mapped to real ID
+    # Get mesh positions, with ESP32 slot mapped to real ID
     mesh_positions = get_all_positions(esp32_id=ESP32_NODE_ID)
-    mesh_adjacency = get_adjacency(esp32_id=ESP32_NODE_ID)
     virtual_ids = get_virtual_node_ids()
 
-    # Validate topology
-    try:
-        validate_topology(mesh_adjacency)
-    except AssertionError as e:
-        log.error(f"Topology validation FAILED: {e}")
-        sys.exit(1)
-
     n_virtual = len(virtual_ids)
-    log.info(f"Mesh topology: {n_virtual} virtual nodes + SINK + ESP32 slot")
+    log.info(f"Mesh topology initialized: {n_virtual} virtual nodes + SINK + ESP32 slot")
 
     # ── 2. Shared state store ─────────────────────────────────────────────────
     store = TelemetryStore()
@@ -97,6 +89,11 @@ def main() -> None:
     rl_ctrl      = RLController(total_nodes=total_nodes)
     metrics      = MetricsTracker(total_nodes=total_nodes)
     injector     = FailureInjector(sim.vnodes)
+    
+    # ── 6. Hierarchical Overlay Managers ──────────────────────────────────────
+    cluster_mgr  = ClusterManager(expected_cluster_size=3)
+    topology_mgr = TopologyManager(ch_range=150.0)
+    env_analyzer = EnvironmentAnalyzer(field_size=100.0)
 
     # ── Graceful shutdown ─────────────────────────────────────────────────────
     running = [True]
@@ -147,8 +144,13 @@ def main() -> None:
             if esp32_pos:
                 store.set_node_position(ESP32_NODE_ID, esp32_pos[0], esp32_pos[1])
 
-        # 3d. Rebuild weighted graph with RL-tuned weights AND mesh adjacency
-        graph_engine.rebuild(all_nodes, weights=rl_ctrl.weights, adjacency=mesh_adjacency)
+        # 3d. Update Environment & Clusters
+        env_analyzer.tick(all_nodes)
+        cluster_mgr.tick(all_nodes)
+        
+        # 3e. Generate Hierarchical Adjacency & Rebuild Graph
+        hierarchical_adjacency = topology_mgr.get_hierarchical_adjacency(all_nodes)
+        graph_engine.rebuild(all_nodes, weights=rl_ctrl.weights, adjacency=hierarchical_adjacency)
 
         # 3e. Compute best route SOURCE → SINK
         # PREFER the real ESP32 as source if it is alive, otherwise use VNODE_1
@@ -226,15 +228,14 @@ def main() -> None:
         })
         write_network_state(snapshot)
 
-        # Log every 10 steps
         if step % 10 == 0:
             m = metrics.summary()
             log.info(
                 f"Step {step:4d} | Alive={store.alive_count()}/{store.count()} "
                 f"| PDR={m['pdr']:.1f}% | Reroutes={m['rerouting_events']} "
                 f"| Variance={m['energy_variance']:.1f} "
-                f"| w1={new_weights.get('w1',0):.2f} "
-                f"w3={new_weights.get('w3',0):.2f}"
+                f"| α={new_weights.get('alpha',0):.2f} "
+                f"β={new_weights.get('beta',0):.2f}"
             )
 
         # Respect tick interval

@@ -29,6 +29,11 @@ class LinkInfo:
     rssi: float = -80.0        # dBm
     lqi: float  = 0.5          # link quality index [0,1]
     distance: float = 10.0     # estimated metres
+    l_q: float = 0.9           # packet delivery reliability [0,1]
+    i_s: float = 0.0           # interference score [0,1]
+    t_f: float = 0.0           # terrain attenuation factor [0,1]
+    f_f: float = 0.0           # foliage density factor [0,1]
+    hop_count: int = 1
     last_seen: float = field(default_factory=time.time)
 
     @property
@@ -57,6 +62,17 @@ class NodeState:
     # ── Position (for graph layout and distance calculation) ──────────────────
     x: float = 0.0
     y: float = 0.0
+
+    # ── Clustering & Hierarchical Roles ───────────────────────────────────────
+    cluster_id: Optional[int] = None
+    is_ch: bool = False
+
+    # ── Predictive & Environment Metrics ──────────────────────────────────────
+    predicted_energy: float = 100.0  # expected future energy
+    queue_delay: float = 0.0         # ms delay in queue
+    t_f: float = 0.0                 # terrain attenuation
+    f_f: float = 0.0                 # foliage factor
+    i_s: float = 0.0                 # interference score
 
     # ── Neighbour table ────────────────────────────────────────────────────────
     neighbors: Dict[str, LinkInfo] = field(default_factory=dict)
@@ -114,11 +130,17 @@ class NodeState:
             "node_id":         self.node_id,
             "node_type":       self.node_type,
             "energy":          round(self.energy, 2),
+            "predicted_energy":round(self.predicted_energy, 2),
             "load":            self.load,
             "rssi":            round(self.rssi, 1),
             "alive":           self.alive,
             "x":               self.x,
             "y":               self.y,
+            "cluster_id":      self.cluster_id,
+            "is_ch":           self.is_ch,
+            "t_f":             round(self.t_f, 2),
+            "f_f":             round(self.f_f, 2),
+            "i_s":             round(self.i_s, 2),
             "packets_sent":    self.packets_sent,
             "packets_received":self.packets_received,
             "packets_dropped": self.packets_dropped,

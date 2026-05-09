@@ -23,11 +23,12 @@ from backend.graph_engine import GraphEngine
 from backend.routing import RoutingEngine
 from backend.rl import RLController
 from backend.metrics import MetricsTracker
+from backend.cluster_manager import ClusterManager
+from backend.topology_manager import TopologyManager
+from backend.environment_analyzer import EnvironmentAnalyzer
 from simulation.network_sim import NetworkSimulator
 from simulation.failure_injection import FailureInjector
-from simulation.mesh_topology import (
-    get_adjacency, get_all_positions, get_virtual_node_ids, validate_topology,
-)
+from simulation.mesh_topology import get_all_positions, get_virtual_node_ids
 from backend.utils import get_logger, write_network_state
 
 log = get_logger("run_simulation")
@@ -38,14 +39,7 @@ ESP32_NODE_ID = "ESP32_REAL_1"
 def run(n_nodes: int = 10, n_steps: int = 100, tick_s: float = 0.5) -> None:
     # ── Load mesh topology ────────────────────────────────────────────────────
     mesh_positions = get_all_positions(esp32_id=ESP32_NODE_ID)
-    mesh_adjacency = get_adjacency(esp32_id=ESP32_NODE_ID)
     virtual_ids = get_virtual_node_ids()
-
-    try:
-        validate_topology(mesh_adjacency)
-    except AssertionError as e:
-        log.error(f"Topology validation FAILED: {e}")
-        sys.exit(1)
 
     n_virtual = len(virtual_ids)
     log.info(f"Standalone simulation: {n_virtual} mesh nodes, {n_steps} steps")
@@ -62,6 +56,10 @@ def run(n_nodes: int = 10, n_steps: int = 100, tick_s: float = 0.5) -> None:
     rl_ctrl      = RLController(total_nodes=n_virtual + 1)
     metrics      = MetricsTracker(total_nodes=n_virtual + 1)
     injector     = FailureInjector(sim.vnodes)
+    
+    cluster_mgr  = ClusterManager(expected_cluster_size=3)
+    topology_mgr = TopologyManager(ch_range=150.0)
+    env_analyzer = EnvironmentAnalyzer(field_size=100.0)
 
     sim.start()
 
@@ -90,7 +88,11 @@ def run(n_nodes: int = 10, n_steps: int = 100, tick_s: float = 0.5) -> None:
         if not source:
             continue
 
-        graph_engine.rebuild(all_nodes, weights=rl_ctrl.weights, adjacency=mesh_adjacency)
+        env_analyzer.tick(all_nodes)
+        cluster_mgr.tick(all_nodes)
+        hierarchical_adjacency = topology_mgr.get_hierarchical_adjacency(all_nodes)
+
+        graph_engine.rebuild(all_nodes, weights=rl_ctrl.weights, adjacency=hierarchical_adjacency)
         decision  = router.make_routing_decision(source, SINK)
         new_weights = rl_ctrl.tick(
             nodes=all_nodes,
