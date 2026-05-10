@@ -101,6 +101,26 @@ function App() {
               </div>
             </div>
           )}
+          {/* Clusters Status */}
+          {data.clusters && data.clusters.length > 0 && (
+            <div className="sidebar-section">
+              <h2>Clusters</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {data.clusters.map((c, i) => (
+                  <div key={i} style={{ padding: '8px', background: '#1E293B', borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <strong style={{ color: '#E2E8F0', fontSize: '13px' }}>Cluster {c.cluster_id}</strong>
+                      <span style={{ color: '#FBBF24', fontSize: '12px', fontWeight: 'bold' }}>{c.ch_id || 'No CH'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94A3B8' }}>
+                      <span>Members: {c.member_count}</span>
+                      <span>Avg Energy: {c.avg_energy}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="sidebar-section">
             <h2>Legend</h2>

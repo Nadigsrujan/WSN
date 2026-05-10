@@ -35,7 +35,12 @@ from backend.topology_manager import TopologyManager
 from backend.environment_analyzer import EnvironmentAnalyzer
 from simulation.network_sim import NetworkSimulator
 from simulation.failure_injection import FailureInjector
-from simulation.mesh_topology import get_all_positions, get_virtual_node_ids
+from simulation.mesh_topology import (
+    get_all_positions, 
+    get_virtual_node_ids, 
+    get_initial_cluster_assignments, 
+    get_initial_ch_roles
+)
 from backend.utils import get_logger, write_network_state
 
 log = get_logger("main")
@@ -72,7 +77,7 @@ def main() -> None:
         tick_interval_s=TICK_INTERVAL_S,
         sink_position=mesh_positions["SINK"],
         mesh_positions={k: v for k, v in mesh_positions.items()
-                        if k.startswith("VNODE")},
+                        if k.startswith("VNODE") or k.startswith("CH")},
     )
     sim.start()
 
@@ -91,7 +96,7 @@ def main() -> None:
     injector     = FailureInjector(sim.vnodes)
     
     # ── 6. Hierarchical Overlay Managers ──────────────────────────────────────
-    cluster_mgr  = ClusterManager(expected_cluster_size=3)
+    cluster_mgr  = ClusterManager()
     topology_mgr = TopologyManager(ch_range=150.0)
     env_analyzer = EnvironmentAnalyzer(field_size=100.0)
 
@@ -114,6 +119,17 @@ def main() -> None:
         log.info(f"[EVENT] {msg}")
 
     add_event("Backend started — mesh topology loaded", "info")
+
+    # ── Initialise Static Cluster Assignments ─────────────────────────────────
+    assignments = get_initial_cluster_assignments(esp32_id=ESP32_NODE_ID)
+    roles = get_initial_ch_roles(esp32_id=ESP32_NODE_ID)
+    
+    for node in store.all_nodes():
+        if node.node_id in assignments:
+            node.cluster_id = assignments[node.node_id]
+        if node.node_id in roles:
+            node.is_ch = roles[node.node_id]
+            node.role = "cluster_head" if node.is_ch else "member"
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     step        = 0
@@ -225,6 +241,7 @@ def main() -> None:
             "sink":          SINK_NODE,
             "routing_table": routing_table,
             "event_log":     event_log[-30:],
+            "clusters":      cluster_mgr.get_cluster_info(all_nodes),
         })
         write_network_state(snapshot)
 

@@ -67,26 +67,10 @@ class NodeState:
     cluster_id: Optional[int] = None
     is_ch: bool = False
     role: str = "member"              # "member" | "cluster_head" | "sink"
-    ch_election_score: float = 0.0    # latest CH election score
-    ch_tenure: int = 0                # steps served as CH (for rotation fairness)
-
-    # ── Reliability & Stability Tracking ──────────────────────────────────────
-    reliability: float = 1.0          # packet success ratio [0,1]
-    rssi_stability: float = 1.0       # inverse RSSI variance (higher = more stable)
-    role: str = "member"              # "member" | "cluster_head" | "sink"
-    ch_election_score: float = 0.0    # latest CH election score
-    ch_tenure: int = 0                # steps served as CH (for rotation fairness)
-
-    # ── Reliability & Stability Tracking ──────────────────────────────────────
-    reliability: float = 1.0          # packet success ratio [0,1]
-    rssi_stability: float = 1.0       # inverse RSSI variance (higher = more stable)
-    role: str = "member"              # "member" | "cluster_head" | "sink"
-    ch_election_score: float = 0.0    # latest CH election score
-    ch_tenure: int = 0                # steps served as CH (for rotation fairness)
-
-    # ── Reliability & Stability Tracking ──────────────────────────────────────
-    reliability: float = 1.0          # packet success ratio [0,1]
-    rssi_stability: float = 1.0       # inverse RSSI variance (higher = more stable)
+    ch_election_score: float = 0.0
+    ch_tenure: int = 0
+    reliability: float = 1.0          # Packet success ratio [0,1]
+    rssi_stability: float = 1.0       # RSSI variance (lower = more stable)
 
     # ── Predictive & Environment Metrics ──────────────────────────────────────
     predicted_energy: float = 100.0  # expected future energy

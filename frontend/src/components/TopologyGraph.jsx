@@ -49,8 +49,8 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
       const isCH = n.is_ch === true;
       const isSink = n.node_type === 'sink' || n.id === 'SINK';
       let fy_override = 150; // Bottom layer (Normal)
-      if (isSink) fy_override = -150; // Top layer (Sink)
-      else if (isCH) fy_override = 0; // Middle layer (CH)
+      if (isSink) fy_override = -200; // Top layer (Sink)
+      else if (isCH) fy_override = -50; // Middle layer (CH)
       
       return { 
         ...n, 
@@ -258,7 +258,8 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
           const key = `${sId}-${tId}`;
           if (pathSet.has(key)) return '#3B82F6';
           if (altPathSet.has(key)) return 'rgba(139, 92, 246, 0.8)';
-          if (chSet.has(sId) && chSet.has(tId)) return '#FBBF24'; // Solid Gold for Mesh Backbone
+          if (edge.edge_type === 'backbone' || edge.edge_type === 'uplink') return '#FBBF24'; // Solid Gold for Mesh Backbone
+          if (edge.edge_type === 'intra_cluster') return 'rgba(148, 163, 184, 0.4)'; // Subtle line for members
           return edge.lqi > 0.6 ? 'rgba(16, 185, 129, 0.2)' : edge.lqi > 0.3 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.1)';
         }}
         linkWidth={(edge) => {
@@ -267,7 +268,7 @@ function TopologyGraph({ graphData, currentPath, altPath, nodesMap }) {
           const key = `${sId}-${tId}`;
           if (pathSet.has(key)) return 6;
           if (altPathSet.has(key)) return 4;
-          if (chSet.has(sId) && chSet.has(tId)) return 5; // Very Thick backbone
+          if (edge.edge_type === 'backbone' || edge.edge_type === 'uplink') return 4; // Thick backbone
           return 1.2;
         }}
         linkLineDash={(edge) => {

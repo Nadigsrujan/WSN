@@ -7,7 +7,7 @@ Rules:
 2. CH nodes connect to neighboring CHs (Mesh Backbone) and to the SINK.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import math
 from backend.models import NodeState
 
@@ -74,3 +74,30 @@ class TopologyManager:
                         adjacency[n.node_id].append(best_ch.node_id)
                         
         return adjacency
+
+    def get_backbone_edges(self, nodes: List[NodeState]) -> List[Tuple[str, str]]:
+        """
+        Returns a list of edge tuples (source_id, target_id) representing the mesh backbone.
+        The backbone consists ONLY of CH↔CH and CH↔SINK connections.
+        Used primarily for visualization and targeted routing.
+        """
+        backbone_edges = []
+        alive_nodes = [n for n in nodes if n.alive]
+        chs = [n for n in alive_nodes if n.is_ch]
+        ch_ids = {ch.node_id for ch in chs}
+        
+        # 1. CH to SINK
+        if any(n.node_id == "SINK" for n in alive_nodes):
+            for ch in chs:
+                backbone_edges.append((ch.node_id, "SINK"))
+                backbone_edges.append(("SINK", ch.node_id))
+                
+        # 2. CH to CH
+        for i in range(len(chs)):
+            for j in range(i + 1, len(chs)):
+                ch1 = chs[i]
+                ch2 = chs[j]
+                backbone_edges.append((ch1.node_id, ch2.node_id))
+                backbone_edges.append((ch2.node_id, ch1.node_id))
+                
+        return backbone_edges

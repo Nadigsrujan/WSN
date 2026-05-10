@@ -73,6 +73,9 @@ class GraphEngine:
                 x=node.x,
                 y=node.y,
                 alive=node.alive,
+                cluster_id=node.cluster_id,
+                is_ch=node.is_ch,
+                role=node.role,
             )
 
         # ── Add edges ONLY between declared neighbors, both alive ─────────────
@@ -102,11 +105,22 @@ class GraphEngine:
                 avg_cost = (cost_uv + cost_vu) / 2.0
 
                 dist = self._distance(u, v)
+                
+                # Determine edge type
+                edge_type = "unknown"
+                if u.is_ch and v.is_ch:
+                    edge_type = "backbone"
+                elif (u.is_ch and v.node_id == "SINK") or (v.is_ch and u.node_id == "SINK"):
+                    edge_type = "uplink"
+                elif (not u.is_ch and v.is_ch) or (not v.is_ch and u.is_ch):
+                    edge_type = "intra_cluster"
+                
                 self.G.add_edge(
                     u_id, v_id,
                     weight=avg_cost,
                     distance=round(dist, 2),
                     lqi=round((u.lqi + v.lqi) / 2.0, 3),
+                    edge_type=edge_type,
                 )
 
         self._last_rebuild = time.time()
