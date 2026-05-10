@@ -66,6 +66,27 @@ class NodeState:
     # ── Clustering & Hierarchical Roles ───────────────────────────────────────
     cluster_id: Optional[int] = None
     is_ch: bool = False
+    role: str = "member"              # "member" | "cluster_head" | "sink"
+    ch_election_score: float = 0.0    # latest CH election score
+    ch_tenure: int = 0                # steps served as CH (for rotation fairness)
+
+    # ── Reliability & Stability Tracking ──────────────────────────────────────
+    reliability: float = 1.0          # packet success ratio [0,1]
+    rssi_stability: float = 1.0       # inverse RSSI variance (higher = more stable)
+    role: str = "member"              # "member" | "cluster_head" | "sink"
+    ch_election_score: float = 0.0    # latest CH election score
+    ch_tenure: int = 0                # steps served as CH (for rotation fairness)
+
+    # ── Reliability & Stability Tracking ──────────────────────────────────────
+    reliability: float = 1.0          # packet success ratio [0,1]
+    rssi_stability: float = 1.0       # inverse RSSI variance (higher = more stable)
+    role: str = "member"              # "member" | "cluster_head" | "sink"
+    ch_election_score: float = 0.0    # latest CH election score
+    ch_tenure: int = 0                # steps served as CH (for rotation fairness)
+
+    # ── Reliability & Stability Tracking ──────────────────────────────────────
+    reliability: float = 1.0          # packet success ratio [0,1]
+    rssi_stability: float = 1.0       # inverse RSSI variance (higher = more stable)
 
     # ── Predictive & Environment Metrics ──────────────────────────────────────
     predicted_energy: float = 100.0  # expected future energy
@@ -138,6 +159,11 @@ class NodeState:
             "y":               self.y,
             "cluster_id":      self.cluster_id,
             "is_ch":           self.is_ch,
+            "role":            self.role,
+            "ch_election_score": round(self.ch_election_score, 2),
+            "ch_tenure":       self.ch_tenure,
+            "reliability":     round(self.reliability, 3),
+            "rssi_stability":  round(self.rssi_stability, 3),
             "t_f":             round(self.t_f, 2),
             "f_f":             round(self.f_f, 2),
             "i_s":             round(self.i_s, 2),

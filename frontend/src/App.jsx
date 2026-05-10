@@ -8,7 +8,7 @@ import RlPanel from './components/RlPanel';
 import RoutingTablePanel from './components/RoutingTablePanel';
 import EventLogPanel from './components/EventLogPanel';
 
-const API_URL = 'http://localhost:8000/api/state';
+const API_URL = 'http://localhost:8001/api/state';
 
 function App() {
   const [data, setData] = useState(null);

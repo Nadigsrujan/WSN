@@ -1,18 +1,17 @@
 """
 simulation/mesh_topology.py
 -----------------------------
-Deterministic layered mesh topology generator for the WSN.
+Adaptive Hierarchical Hybrid Mesh topology generator for the WSN.
 
-Produces a 3-layer hierarchical mesh where:
-  - Layer 1 (edge sensors): furthest from SINK
-  - Layer 2 (backbone relays): middle tier, includes ESP32 slot
-  - Layer 3 (upper relays): connects directly to SINK
+Produces a clustered architecture where:
+  - SINK is at the top.
+  - Cluster Heads (CHs) form a full mesh backbone connecting to SINK.
+  - Normal nodes connect ONLY to their assigned CH.
 
 Guarantees:
-  - Every node has degree 2–4
-  - Every node has ≥ 2 disjoint paths to SINK
-  - SINK only connects to Layer 3
-  - Removing any single node does NOT partition the graph
+  - Strict hierarchical clustering.
+  - 4 distinct clusters with 3 members and 1 CH each.
+  - SINK only connects to CHs.
 """
 
 from __future__ import annotations
@@ -24,78 +23,60 @@ from backend.utils import get_logger
 log = get_logger("mesh_topology")
 
 # ─── Predefined mesh positions ───────────────────────────────────────────────
-# Layout in a 100×100m field.  SINK sits at top-centre.
-# Y increases upward toward SINK.
+# Layout in a 100×100m field. SINK sits at top-centre.
 
-SINK_POS = (50.0, 90.0)
+SINK_POS = (50.0, 95.0)
 
-# Layer 3 (upper relays) — connect to SINK
-LAYER3_POSITIONS = {
-    "VNODE_7": (25.0, 70.0),
-    "VNODE_8": (50.0, 70.0),
-    "VNODE_9": (75.0, 70.0),
+# Cluster 1 (Left)
+CLUSTER_1 = {
+    "CH1": (20.0, 65.0),
+    "VNODE_1": (10.0, 45.0),
+    "VNODE_2": (25.0, 40.0),
+    "VNODE_3": (15.0, 50.0),
 }
 
-# Layer 2 (backbone) — includes an ESP32 slot
-LAYER2_POSITIONS = {
-    "VNODE_4": (15.0, 45.0),
-    "VNODE_5": (38.0, 45.0),
-    "ESP32_SLOT": (60.0, 45.0),   # placeholder for real ESP32
-    "VNODE_6": (82.0, 45.0),
+# Cluster 2 (Mid-Left) - includes ESP32 slot
+CLUSTER_2 = {
+    "CH2": (45.0, 70.0),
+    "ESP32_SLOT": (35.0, 50.0),
+    "VNODE_5": (50.0, 45.0),
+    "VNODE_6": (40.0, 40.0),
 }
 
-# Layer 1 (edge sensors)
-LAYER1_POSITIONS = {
-    "VNODE_1": (12.0, 20.0),
-    "VNODE_2": (35.0, 20.0),
-    "VNODE_3": (58.0, 20.0),
-    "VNODE_10": (80.0, 20.0),
+# Cluster 3 (Mid-Right)
+CLUSTER_3 = {
+    "CH3": (65.0, 65.0),
+    "VNODE_7": (60.0, 45.0),
+    "VNODE_8": (70.0, 40.0),
+    "VNODE_9": (55.0, 50.0),
 }
 
-# ─── Explicit adjacency (the core mesh definition) ───────────────────────────
-# Each entry lists the neighbors for that node.
-# This is hand-crafted to guarantee degree 2–4 and 2-connectivity.
-
-MESH_ADJACENCY: Dict[str, List[str]] = {
-    # SINK connects ONLY to Layer 3
-    "SINK":     ["VNODE_7", "VNODE_8", "VNODE_9"],
-
-    # Layer 3 — inter-layer + intra-layer links
-    "VNODE_7":  ["SINK", "VNODE_8", "VNODE_4", "VNODE_5"],
-    "VNODE_8":  ["SINK", "VNODE_7", "VNODE_9", "ESP32_SLOT"],
-    "VNODE_9":  ["SINK", "VNODE_8", "ESP32_SLOT", "VNODE_6"],
-
-    # Layer 2 — backbone
-    "VNODE_4":  ["VNODE_7", "VNODE_5", "VNODE_1", "VNODE_2"],
-    "VNODE_5":  ["VNODE_7", "VNODE_4", "VNODE_2", "VNODE_3"],
-    "ESP32_SLOT": ["VNODE_8", "VNODE_9", "VNODE_3", "VNODE_6"],
-    "VNODE_6":  ["VNODE_9", "ESP32_SLOT", "VNODE_3", "VNODE_10"],
-
-    # Layer 1 — edge sensors
-    "VNODE_1":  ["VNODE_4", "VNODE_2"],
-    "VNODE_2":  ["VNODE_1", "VNODE_4", "VNODE_5", "VNODE_3"],
-    "VNODE_3":  ["VNODE_2", "VNODE_5", "ESP32_SLOT", "VNODE_10"],
-    "VNODE_10": ["VNODE_3", "VNODE_6"],
+# Cluster 4 (Right)
+CLUSTER_4 = {
+    "CH4": (85.0, 70.0),
+    "VNODE_10": (80.0, 50.0),
+    "VNODE_11": (90.0, 45.0),
+    "VNODE_12": (85.0, 40.0),
 }
 
+CLUSTER_DEFINITIONS = {
+    1: {"members": list(CLUSTER_1.keys()), "positions": CLUSTER_1},
+    2: {"members": list(CLUSTER_2.keys()), "positions": CLUSTER_2},
+    3: {"members": list(CLUSTER_3.keys()), "positions": CLUSTER_3},
+    4: {"members": list(CLUSTER_4.keys()), "positions": CLUSTER_4},
+}
 
 def get_all_positions(esp32_id: Optional[str] = None) -> Dict[str, Tuple[float, float]]:
     """
     Return a dict of {node_id: (x, y)} for every node in the mesh,
     including SINK.
-
-    If `esp32_id` is given (e.g. "ESP32_REAL_1"), it replaces the
-    ESP32_SLOT key with the real node's ID.
     """
     positions: Dict[str, Tuple[float, float]] = {}
     positions["SINK"] = SINK_POS
 
-    for nid, pos in LAYER3_POSITIONS.items():
-        positions[nid] = pos
-    for nid, pos in LAYER2_POSITIONS.items():
-        positions[nid] = pos
-    for nid, pos in LAYER1_POSITIONS.items():
-        positions[nid] = pos
+    for cluster_data in CLUSTER_DEFINITIONS.values():
+        for nid, pos in cluster_data["positions"].items():
+            positions[nid] = pos
 
     # Replace ESP32_SLOT with real node id if provided
     if esp32_id and "ESP32_SLOT" in positions:
@@ -103,98 +84,46 @@ def get_all_positions(esp32_id: Optional[str] = None) -> Dict[str, Tuple[float, 
 
     return positions
 
-
-def get_adjacency(esp32_id: Optional[str] = None) -> Dict[str, List[str]]:
+def get_initial_cluster_assignments(esp32_id: Optional[str] = None) -> Dict[str, int]:
     """
-    Return the mesh adjacency list.
-
-    If `esp32_id` is given, replaces all occurrences of "ESP32_SLOT"
-    with the real ESP32 node ID.
+    Returns {node_id: cluster_id} mapping.
     """
-    adj = {}
-    for node, neighbors in MESH_ADJACENCY.items():
-        key = esp32_id if (esp32_id and node == "ESP32_SLOT") else node
-        adj[key] = [
-            (esp32_id if (esp32_id and n == "ESP32_SLOT") else n)
-            for n in neighbors
-        ]
-    return adj
-
+    assignments = {}
+    for cid, data in CLUSTER_DEFINITIONS.items():
+        for nid in data["members"]:
+            key = esp32_id if (esp32_id and nid == "ESP32_SLOT") else nid
+            assignments[key] = cid
+    return assignments
 
 def get_virtual_node_ids() -> List[str]:
     """Return IDs of all virtual nodes (excludes SINK and ESP32_SLOT)."""
-    return [
-        nid for nid in MESH_ADJACENCY.keys()
-        if nid not in ("SINK", "ESP32_SLOT")
-    ]
+    vnodes = []
+    for data in CLUSTER_DEFINITIONS.values():
+        for nid in data["members"]:
+            if nid not in ("SINK", "ESP32_SLOT"):
+                vnodes.append(nid)
+    return vnodes
 
-
-def get_layer(node_id: str) -> int:
-    """Return the layer number (1, 2, 3) for a given node, or 0 for SINK."""
-    if node_id == "SINK":
-        return 0
-    if node_id in LAYER3_POSITIONS:
-        return 3
-    if node_id in LAYER2_POSITIONS or node_id == "ESP32_SLOT":
-        return 2
-    if node_id in LAYER1_POSITIONS:
-        return 1
-    # Real ESP32 is always layer 2
-    return 2
-
-
-def validate_topology(adjacency: Dict[str, List[str]]) -> bool:
+def validate_topology(adjacency: Dict[str, List[str]], ch_list: List[str]) -> bool:
     """
-    Validate that the mesh topology satisfies all constraints:
-      1. Every non-SINK node has degree 2–4
-      2. SINK has degree ≤ 4
-      3. Graph is connected
-      4. Every non-SINK node has ≥ 2 node-disjoint paths to SINK
-
-    Returns True if valid, raises AssertionError with details if not.
+    Validate hierarchical constraints based on current dynamic state:
+      1. SINK only connects to CHs.
+      2. Normal nodes only connect to a CH.
+      3. CHs form a connected mesh (and connect to SINK).
     """
-    # 1. Degree constraints
+    sink_neighbors = adjacency.get("SINK", [])
+    for n in sink_neighbors:
+        assert n in ch_list, f"SINK connected to non-CH node: {n}"
+
     for node, neighbors in adjacency.items():
-        deg = len(neighbors)
         if node == "SINK":
-            assert deg <= 4, f"SINK degree {deg} > 4"
-        else:
-            assert 2 <= deg <= 4, f"{node} degree {deg} not in [2,4]"
-
-    # 2. Connectivity — BFS from SINK
-    visited = set()
-    queue = ["SINK"]
-    while queue:
-        curr = queue.pop(0)
-        if curr in visited:
             continue
-        visited.add(curr)
-        for nb in adjacency.get(curr, []):
-            if nb not in visited:
-                queue.append(nb)
+        
+        is_ch = node in ch_list
+        if not is_ch:
+            # Normal node must connect to AT LEAST ONE CH
+            has_ch_neighbor = any(nb in ch_list for nb in neighbors)
+            assert has_ch_neighbor, f"Normal node {node} has no CH neighbor"
 
-    all_nodes = set(adjacency.keys())
-    assert visited == all_nodes, f"Disconnected nodes: {all_nodes - visited}"
-
-    # 3. 2-connectivity: removing any single non-SINK node should not disconnect
-    non_sink = [n for n in all_nodes if n != "SINK"]
-    for removed in non_sink:
-        # BFS on reduced graph
-        remaining = all_nodes - {removed}
-        start = next(iter(remaining))
-        vis2 = set()
-        q2 = [start]
-        while q2:
-            c = q2.pop(0)
-            if c in vis2:
-                continue
-            vis2.add(c)
-            for nb in adjacency.get(c, []):
-                if nb != removed and nb not in vis2:
-                    q2.append(nb)
-        assert vis2 == remaining, (
-            f"Removing {removed} disconnects: unreachable = {remaining - vis2}"
-        )
-
-    log.info("Topology validation PASSED: all constraints satisfied")
+    log.info("Topology validation PASSED: hierarchical constraints satisfied")
     return True

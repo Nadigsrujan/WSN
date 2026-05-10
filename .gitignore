@@ -1,0 +1,9 @@
+venv/
+frontend/node_modules/
+backend/__pycache__/
+rl/__pycache__/
+simulation/__pycache__/
+routing/__pycache__/
+
+
+*.pyc
