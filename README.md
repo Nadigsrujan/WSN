@@ -1,29 +1,6 @@
 # RL-Assisted Hybrid Wireless Sensor Network with Cloud Synchronization
 
-> **Final-Year Engineering Project** — Hybrid WSN combining Python Virtual Nodes, a Physical ESP32 Node, MQTT communication, Reinforcement Learning–based routing, dynamic cluster formation, intra-cluster mesh topology, and Google Firestore cloud synchronization, visualized on a React/Vite dashboard.
-
----
-
-## Table of Contents
-
-1. [Project Overview](#1-project-overview)
-2. [System Architecture](#2-system-architecture)
-3. [Edge-to-Cloud Architecture](#3-edge-to-cloud-architecture)
-4. [Dynamic Node Roles](#4-dynamic-node-roles)
-5. [Cluster Formation & Intra-Cluster Mesh](#5-cluster-formation--intra-cluster-mesh)
-6. [RL-Based Routing](#6-rl-based-routing)
-7. [Self-Healing & Fault Tolerance](#7-self-healing--fault-tolerance)
-8. [Topology & Static Positions](#8-topology--static-positions)
-9. [MQTT Communication](#9-mqtt-communication)
-10. [Cloud Integration](#10-cloud-integration)
-11. [Dashboard Features](#11-dashboard-features)
-12. [Project Structure](#12-project-structure)
-13. [ESP32 Firmware](#13-esp32-firmware)
-14. [Quick Start](#14-quick-start)
-15. [Performance Metrics](#15-performance-metrics)
-16. [Required Libraries & Dependencies](#16-required-libraries--dependencies)
-
----
+Hybrid WSN combining Python Virtual Nodes, a Physical ESP32 Node, MQTT communication, Reinforcement Learning–based routing, dynamic cluster formation, intra-cluster mesh topology, and Google Firestore cloud synchronization, visualized on a React/Vite dashboard.
 
 ## 1. Project Overview
 
