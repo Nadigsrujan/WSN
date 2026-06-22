@@ -18,6 +18,7 @@ frontend/dist/
 
 # ── Runtime data / logs ────────────────────────────────────────────────
 data/logs/*.jsonl
+data/logs/telemetry.jsonl
 data/network_state.json
 data/network_state.tmp
 
