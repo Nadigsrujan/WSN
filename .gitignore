@@ -31,3 +31,4 @@ backend/wsn-el-*.json
 
 # ── Misc ────────────────────────────────────────────────────────────────
 package-lock.json
+.claude/
