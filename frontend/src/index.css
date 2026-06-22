@@ -111,6 +111,10 @@ body {
   margin-bottom: 1rem;
 }
 
+.sidebar-section {
+  flex-shrink: 0;
+}
+
 /* Dashboard Grid */
 .dashboard-area {
   flex: 1;
@@ -125,19 +129,24 @@ body {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
-  min-height: 400px;
+  height: 500px;
+  flex-shrink: 0;
 }
 
 .middle-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  height: 350px;
+  flex-shrink: 0;
 }
 
 .bottom-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  height: 350px;
+  flex-shrink: 0;
 }
 
 /* Panel / Card Base */
@@ -164,6 +173,7 @@ body {
   flex: 1;
   padding: 1.25rem;
   position: relative;
+  overflow-y: auto;
 }
 
 .panel-content.no-padding {
@@ -340,6 +350,11 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .loader {
   display: flex;
   flex-direction: column;
@@ -348,4 +363,159 @@ body {
   height: 100vh;
   gap: 1rem;
   color: var(--text-muted);
+}
+/* Graph Controls */
+.graph-control-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.graph-control-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: #fff;
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.graph-control-btn:active {
+  transform: translateY(0);
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+/* Gateway Mode + Cloud Sync (additive — only visible in Gateway Mode)        */
+/* ───────────────────────────────────────────────────────────────────────── */
+.mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg-card-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.mode-toggle:hover { border-color: var(--accent-blue); }
+.mode-toggle.gateway {
+  color: #fff;
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 12px var(--accent-blue-glow);
+}
+
+.cloud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--status-good);
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 999px;
+}
+
+.cloud-panel {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.08);
+  flex-shrink: 0;
+}
+.cloud-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.cloud-stat {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-blue);
+  border-radius: 0.5rem;
+  padding: 0.9rem 1rem;
+}
+.cloud-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.cloud-stat-value {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: #fff;
+}
+.cloud-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--status-good);
+  box-shadow: 0 0 8px var(--status-good);
+  animation: pulse 2s infinite;
+}
+.cloud-error {
+  grid-column: 1 / -1;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--status-warn);
+  background-color: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 0.5rem;
+}
+.cloud-flow {
+  grid-column: 1 / -1;
+  margin-top: 0.25rem;
+  padding: 0.9rem 1rem;
+  background-color: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 0.5rem;
+}
+.cloud-flow-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+.cloud-flow-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+}
+.cloud-flow-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+}
+.cloud-flow-arrow {
+  color: var(--accent-blue);
+  transform: rotate(-90deg);
+  display: inline-block;
 }

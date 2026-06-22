@@ -122,15 +122,29 @@ class NetworkSimulator:
             node.receive_packet()
 
         # Step all alive nodes
+        # NOTE: Positions (x, y) are NEVER modified here.
+        # update_rssi_from_neighbors() only updates the rssi field — positions
+        # remain at their static mesh values set during initialization.
         prev_alive = {n.node_id for n in self.vnodes if n.is_alive}
         for vnode in self.vnodes:
             if vnode.is_alive:
+                # Snapshot positions BEFORE step to guard against accidental changes
+                pre_x, pre_y = vnode.state.x, vnode.state.y
                 packets_tx = 1 if vnode in forwarders else 0
                 packets_rx = 1 if vnode in receivers  else 0
                 vnode.step(packets_tx=packets_tx, packets_rx=packets_rx)
                 vnode.update_rssi_from_neighbors(
                     [n for n in self.vnodes if n.node_id != vnode.node_id and n.is_alive]
                 )
+                # Position guard: ensure x/y were never modified
+                if vnode.state.x != pre_x or vnode.state.y != pre_y:
+                    log.error(
+                        f"POSITION INTEGRITY VIOLATION: {vnode.node_id} "
+                        f"moved from ({pre_x},{pre_y}) to "
+                        f"({vnode.state.x},{vnode.state.y}) — restoring"
+                    )
+                    vnode.state.x = pre_x
+                    vnode.state.y = pre_y
 
         # Detect newly dead nodes
         curr_alive = {n.node_id for n in self.vnodes if n.is_alive}
@@ -147,9 +161,25 @@ class NetworkSimulator:
             log.info(f"Step {self._step}: {alive_count}/{len(self.vnodes)} nodes alive")
 
     def _sync_to_store(self) -> None:
-        """Push all virtual node states into the TelemetryStore."""
-        # Virtual nodes
+        """Push all virtual node states into the TelemetryStore.
+        
+        Preserves:
+          - cluster_id and is_ch from backend election results
+          - x/y from the store if the position is frozen (handled by store.upsert)
+        """
         for vnode in self.vnodes:
+            # PRESERVE: Fetch current CH/Cluster status from the store first
+            # so the simulator doesn't overwrite the backend's election results.
+            current = self.store.get(vnode.node_id)
+            if current:
+                vnode.state.cluster_id = current.cluster_id
+                vnode.state.is_ch = current.is_ch
+                # Also preserve frozen position — store.upsert will handle this,
+                # but we update vnode.state to stay consistent in memory too.
+                if vnode.node_id in self.store._frozen_positions:
+                    vnode.state.x = current.x
+                    vnode.state.y = current.y
+
             self.store.upsert(vnode.state)
             log_telemetry(vnode.state.to_dict())
 

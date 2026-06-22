@@ -179,11 +179,14 @@ class RoutingEngine:
                     break
 
             table[node.node_id] = {
-                "next_hop": next_hop,
-                "alt_hop": alt_hop,
-                "cost": round(cost, 3),
-                "alt_cost": round(alt_cost, 3),
-                "status": status,
+                "next_hop":  next_hop,
+                "alt_hop":   alt_hop,
+                "cost":      round(cost, 3),
+                "alt_cost":  round(alt_cost, 3),
+                "status":    status,
+                "hop_count": max(0, len(primary) - 1) if primary else 0,
+                "cluster_id": node.cluster_id,
+                "is_ch":     node.is_ch,
             }
 
         return table

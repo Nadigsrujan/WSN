@@ -1,0 +1,25 @@
+# ── Secrets / credentials ──────────────────────────────────────────────
+# NEVER commit the real Firebase service account key.
+backend/service-account.json
+**/service-account.json
+*.serviceaccount.json
+
+# ── Python ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# ── Node / frontend ────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+
+# ── Runtime data / logs ────────────────────────────────────────────────
+data/logs/*.jsonl
+data/network_state.json
+data/network_state.tmp
+
+# Firebase admin SDK credential files
+backend/wsn-el-*.json
