@@ -23,3 +23,10 @@ data/network_state.tmp
 
 # Firebase admin SDK credential files
 backend/wsn-el-*.json
+
+# ── macOS ───────────────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+
+# ── Misc ────────────────────────────────────────────────────────────────
+package-lock.json

@@ -57,8 +57,8 @@ def run(n_nodes: int = 10, n_steps: int = 100, tick_s: float = 0.5) -> None:
     metrics      = MetricsTracker(total_nodes=n_virtual + 1)
     injector     = FailureInjector(sim.vnodes)
     
-    cluster_mgr  = ClusterManager(expected_cluster_size=3)
-    topology_mgr = TopologyManager(ch_range=150.0)
+    cluster_mgr  = ClusterManager(num_clusters=3)
+    topology_mgr = TopologyManager()
     env_analyzer = EnvironmentAnalyzer(field_size=100.0)
 
     sim.start()
