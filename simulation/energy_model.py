@@ -21,11 +21,11 @@ import random
 from typing import Optional
 
 
-# ─── Default energy parameters (all in percent per event) ─────────────────────
-TX_COST_PER_PACKET  = 0.08    # % energy drained per transmitted packet
-RX_COST_PER_PACKET  = 0.04    # % energy drained per received packet
-IDLE_COST_PER_STEP  = 0.005   # % energy drained per simulation step (idle)
-SENSING_COST        = 0.002   # % energy per sensing event
+# ─── Default energy parameters (Increased for visible rotation) ───────────────
+TX_COST_PER_PACKET  = 0.8     # % energy drained per transmitted packet
+RX_COST_PER_PACKET  = 0.4     # % energy drained per received packet
+IDLE_COST_PER_STEP  = 0.05    # % energy drained per simulation step (idle)
+SENSING_COST        = 0.02    # % energy per sensing event
 
 # ─── RSSI propagation constants ───────────────────────────────────────────────
 RSSI_REF_DBM        = -30.0   # RSSI at 1 m reference distance

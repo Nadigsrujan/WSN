@@ -40,22 +40,35 @@ class GraphEngine:
 
     # ─── Public API ───────────────────────────────────────────────────────────
 
+    # Penalty multiplier applied to non-CH↔non-CH intra-cluster edges.
+    # This forces Dijkstra to route through the CH without removing mesh links.
+    _NON_CH_PENALTY = 50.0
+
     def rebuild(
         self,
         nodes: List[NodeState],
         weights: Dict[str, float] = None,
         adjacency: Dict[str, List[str]] = None,
+        penalized_edges: set = None,
     ) -> nx.Graph:
         """
         Clear and rebuild the graph from the current node list.
 
         Uses EXPLICIT ADJACENCY to create edges — not distance.
         Only alive nodes get edges; dead nodes are added for visualisation.
+
+        penalized_edges: set of (sorted) edge tuples (u, v) that should
+        receive a large cost penalty. Used to enforce CH-only routing while
+        still displaying the full intra-cluster mesh.
         """
         if weights:
             self._weights = weights
         if adjacency:
             self._adjacency = adjacency
+        if penalized_edges is not None:
+            self._penalized_edges = penalized_edges
+        if not hasattr(self, '_penalized_edges'):
+            self._penalized_edges = set()
 
         self.G.clear()
 
@@ -73,6 +86,8 @@ class GraphEngine:
                 x=node.x,
                 y=node.y,
                 alive=node.alive,
+                cluster_id=node.cluster_id,
+                is_ch=node.is_ch,
             )
 
         # ── Add edges ONLY between declared neighbors, both alive ─────────────
@@ -101,12 +116,18 @@ class GraphEngine:
                 cost_vu = compute_edge_cost(v, u, self._weights)
                 avg_cost = (cost_uv + cost_vu) / 2.0
 
+                # Apply CH-routing penalty: non-CH ↔ non-CH same-cluster links
+                # get a heavy multiplier so Dijkstra always prefers CH paths.
+                if edge_key in self._penalized_edges:
+                    avg_cost *= self._NON_CH_PENALTY
+
                 dist = self._distance(u, v)
                 self.G.add_edge(
                     u_id, v_id,
                     weight=avg_cost,
                     distance=round(dist, 2),
                     lqi=round((u.lqi + v.lqi) / 2.0, 3),
+                    penalized=(edge_key in self._penalized_edges),
                 )
 
         self._last_rebuild = time.time()

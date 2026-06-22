@@ -111,6 +111,10 @@ body {
   margin-bottom: 1rem;
 }
 
+.sidebar-section {
+  flex-shrink: 0;
+}
+
 /* Dashboard Grid */
 .dashboard-area {
   flex: 1;
@@ -125,19 +129,24 @@ body {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
-  min-height: 400px;
+  height: 500px;
+  flex-shrink: 0;
 }
 
 .middle-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  height: 350px;
+  flex-shrink: 0;
 }
 
 .bottom-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  height: 350px;
+  flex-shrink: 0;
 }
 
 /* Panel / Card Base */
@@ -164,6 +173,7 @@ body {
   flex: 1;
   padding: 1.25rem;
   position: relative;
+  overflow-y: auto;
 }
 
 .panel-content.no-padding {
@@ -340,6 +350,11 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .loader {
   display: flex;
   flex-direction: column;
@@ -348,4 +363,31 @@ body {
   height: 100vh;
   gap: 1rem;
   color: var(--text-muted);
+}
+/* Graph Controls */
+.graph-control-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.graph-control-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: #fff;
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.graph-control-btn:active {
+  transform: translateY(0);
 }
