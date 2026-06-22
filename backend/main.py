@@ -50,6 +50,7 @@ from simulation.mesh_topology import (
     get_full_static_adjacency,
 )
 from backend.utils import get_logger, write_network_state
+from backend.cloud_sync import CloudSync
 
 log = get_logger("main")
 
@@ -119,6 +120,13 @@ def main() -> None:
     if not mqtt_ok:
         log.warning("MQTT unavailable — running in simulation-only mode")
 
+    # ── Cloud sync (Google Firestore) — async, optional, fail-safe ─────────────
+    # Mirrors telemetry / routing / CH / RL events to Firestore on a background
+    # thread. If firebase-admin or credentials are missing it stays disabled and
+    # never affects the simulation, MQTT, routing, RL, or the dashboard.
+    cloud = CloudSync(gateway_id=ESP32_NODE_ID)
+    cloud.start()
+
     # ── 7. Core engines ───────────────────────────────────────────────────────
     graph_engine = GraphEngine()
     router       = RoutingEngine(graph_engine)
@@ -158,6 +166,7 @@ def main() -> None:
     step       = 0
     prev_alive = set()
     ch_events_accum: List[Dict] = []  # accumulate CH events for dashboard
+    last_reroute_ts = 0.0             # high-water mark for reroutes sent to cloud
 
     log.info(f"Orchestrator running (tick={TICK_INTERVAL_S}s) — Ctrl+C to stop")
 
@@ -316,8 +325,25 @@ def main() -> None:
         while len(event_log) > 50:
             event_log.pop(0)
 
-        # 3m. Write state for dashboard
+        # 3m. Cloud sync (async) — mirror this tick's state to Firestore.
+        # Only NEW reroute events (since last tick) are forwarded to the cloud.
+        recent_reroutes = router.get_recent_events()
+        new_reroutes = [e for e in recent_reroutes
+                        if e.get("timestamp", 0) > last_reroute_ts]
+        if recent_reroutes:
+            last_reroute_ts = max(e.get("timestamp", 0) for e in recent_reroutes)
+
         snapshot = store.snapshot()
+        cloud.sync(
+            snapshot=snapshot,
+            current_path=path,
+            reroute_events=new_reroutes,
+            rl_summary=rl_ctrl.rl_summary,
+            cluster_heads=cluster_mgr.cluster_heads,
+            step=step,
+        )
+
+        # 3n. Write state for dashboard
         snapshot.update({
             "current_path":  path,
             "alt_path":      router.last_alt_path,
@@ -330,6 +356,7 @@ def main() -> None:
             "routing_table": routing_table,
             "event_log":     event_log[-30:],
             "ch_events":     ch_events_accum[-10:],  # last 10 CH changes
+            "cloud":         cloud.status(),
         })
         write_network_state(snapshot)
 
@@ -351,6 +378,7 @@ def main() -> None:
     # ── Cleanup ──────────────────────────────────────────────────────────────
     sim.stop()
     mqtt.stop()
+    cloud.stop()
     log.info(f"Backend stopped after {step} steps")
     log.info(f"Final metrics: {metrics.summary()}")
 

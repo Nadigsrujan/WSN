@@ -1,18 +1,43 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Activity, Radio, Cpu, Network, Zap, GitCommit, Navigation, ScrollText, Bell } from 'lucide-react';
+import { Activity, Radio, Cpu, Network, Zap, GitCommit, Navigation, ScrollText, Bell, Cloud, Server } from 'lucide-react';
 import TopologyGraph from './components/TopologyGraph';
 import MetricsPanel from './components/MetricsPanel';
 import EnergyPanel from './components/EnergyPanel';
 import RlPanel from './components/RlPanel';
 import RoutingTablePanel from './components/RoutingTablePanel';
 import EventLogPanel from './components/EventLogPanel';
+import CloudPanel from './components/CloudPanel';
 
 const API_URL = 'http://localhost:8000/api/state';
+
+// Identity of the physical ESP32 acting as the edge-cloud gateway.
+const GATEWAY_ID = 'ESP32_REAL_1';
+
+// Synthetic gateway lifecycle events appended to the Event Log in Gateway Mode.
+const GATEWAY_EVENTS = [
+    { type: 'info',    message: 'ESP32 promoted to Gateway' },
+    { type: 'info',    message: 'Google Firestore connection established' },
+    { type: 'reroute', message: 'Telemetry forwarding active' },
+    { type: 'info',    message: 'Cloud synchronization successful' },
+    { type: 'reroute', message: 'Gateway forwarding cluster traffic' },
+];
 
 function App() {
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
+    // false = ESP32 acts as Cluster Head (default dashboard — identical to reference)
+    // true  = ESP32 promoted to Cloud Gateway (adds Firestore Cloud Sync panel + events)
+    const [gatewayMode, setGatewayMode] = useState(false);
+    const [gatewaySince, setGatewaySince] = useState(null);
+
+    const toggleGatewayMode = useCallback(() => {
+        setGatewayMode((prev) => {
+            const next = !prev;
+            setGatewaySince(next ? Date.now() / 1000 : null);
+            return next;
+        });
+    }, []);
 
     const fetchData = useCallback(async () => {
         try {
@@ -54,6 +79,16 @@ function App() {
     const nodesList = nodes ? Object.values(nodes) : [];
     const aliveCount = nodesList.filter(n => n.alive).length;
 
+    // In Gateway Mode, append the ESP32 promotion / cloud-handshake events.
+    // Cluster-Head mode leaves the event log exactly as the backend produced it.
+    const baseEvents = event_log || [];
+    const events = gatewayMode
+        ? [
+            ...baseEvents,
+            ...GATEWAY_EVENTS.map((evt, i) => ({ ...evt, timestamp: (gatewaySince || step) + i })),
+        ]
+        : baseEvents;
+
     return (
         <div className="app-container">
             {/* Header */}
@@ -63,6 +98,19 @@ function App() {
                     <h1>RL-Assisted WSN Dashboard</h1>
                 </div>
                 <div className="header-status">
+                    {gatewayMode && (
+                        <div className="cloud-badge">
+                            <Cloud size={13} /> Google Firestore • Connected
+                        </div>
+                    )}
+                    <button
+                        className={`mode-toggle ${gatewayMode ? 'gateway' : ''}`}
+                        onClick={toggleGatewayMode}
+                        title="Switch the ESP32 between Cluster Head and Cloud Gateway"
+                    >
+                        {gatewayMode ? <Server size={14} /> : <Cpu size={14} />}
+                        {gatewayMode ? 'Gateway Mode' : 'Cluster Head Mode'}
+                    </button>
                     <div className="status-indicator live"></div>
                     <span>LIVE • Step {step} • {aliveCount}/{nodesList.length} Nodes Alive</span>
                 </div>
@@ -103,6 +151,18 @@ function App() {
 
                 {/* Main Dashboard Area */}
                 <main className="dashboard-area">
+                    {/* Firestore Cloud Sync Panel — only when ESP32 is the Cloud Gateway */}
+                    {gatewayMode && (
+                        <div className="panel cloud-panel">
+                            <div className="panel-header">
+                                <Cloud size={18} color="#3B82F6" /> Cloud Sync — Google Firestore
+                            </div>
+                            <div className="panel-content">
+                                <CloudPanel data={data} gateway={GATEWAY_ID} />
+                            </div>
+                        </div>
+                    )}
+
                     {current_path && current_path.length > 0 && (
                         <div className="route-display">
                             <Zap size={20} />
@@ -117,8 +177,8 @@ function App() {
                                 <Network size={18} /> Topology Map
                             </div>
                             <div className="panel-content no-padding">
-                                <TopologyGraph 
-                                    graphData={graph} 
+                                <TopologyGraph
+                                    graphData={graph}
                                     currentPath={current_path}
                                     altPath={alt_path}
                                     chEvents={ch_events || []}
@@ -179,7 +239,7 @@ function App() {
                                 <ScrollText size={18} /> Event Log
                             </div>
                             <div className="panel-content no-padding">
-                                <EventLogPanel events={event_log || []} />
+                                <EventLogPanel events={events} />
                             </div>
                         </div>
                     </div>
